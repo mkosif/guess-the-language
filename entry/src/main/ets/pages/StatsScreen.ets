@@ -13,17 +13,14 @@ export default struct StatsScreen {
   private ctx2: CanvasRenderingContext2D | null = null;
   private screenWidth: number = 0;
   private screenHeight: number = 0;
-  @State currentIndex: number = 0
 
   private drawGraph(cts: CanvasRenderingContext2D | null, takenContext: CanvasRenderingContext2D, takenData: number[]) {
     if (!cts) {
       return;
     }
-    //The context size of swiper element becomes smaller for subsequent items, so we used global variables instead of relying on the context.
+    //The context size of swiper element becomes smaller for subsequent items, so we used global variables.
     const w: number = this.screenWidth;
     const h: number = this.screenHeight;
-    // const w: number = takenContext.width;
-    // const h: number = takenContext.height;
     takenContext.clearRect(0, 0, w, h);
 
     // Scale data
@@ -32,7 +29,7 @@ export default struct StatsScreen {
 
     // Draw axes + labels
     for (let i = 0; i < 4; i++) {
-      if (i == 0) {
+      if (i === 0) {
         takenContext.strokeStyle = '#DD6031';
       } else {
         takenContext.strokeStyle = '#EABE7C';
@@ -87,8 +84,6 @@ export default struct StatsScreen {
   }
 
   async aboutToAppear() {
-    // Resetting today's data for testing
-    // await resetToday(this.getUIContext().getHostContext() as Context)
     this.scoreData = await getLast7Days(this.getUIContext().getHostContext() as Context, 'score');
     this.percentData = await getLast7Days(this.getUIContext().getHostContext() as Context, 'percent');
     if (this.ctx) {

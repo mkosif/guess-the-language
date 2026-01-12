@@ -1,13 +1,10 @@
-import { media } from '@kit.MediaKit';
-import { audio } from '@kit.AudioKit';
-import { BusinessError } from '@kit.BasicServicesKit';
 import { Question } from '../model/Question';
 import { Score } from '../model/Score';
 import { Questions } from '../viewmodel/Questions';
 import { QuestionOptions } from '../components/QuestionOptions';
 import { CustomButton } from '../components/CustomButton';
-import { window } from '@kit.ArkUI';
 import { AlertDialog } from '@kit.ArkUI';
+import { playAudio } from '../components/playAudio'
 
 const PROGRESS_TOTAL = 100;
 const XP = 35;
@@ -25,22 +22,17 @@ export default struct QuizScreen {
   @State answerState: boolean = false;
   @State totalTime: number = 0;
   @State correctCount: number = 0;
-  @State totalPoint: number = 0;
   @State currentQuestion: Question = {
     question: '',
     languageException: false,
-    options: [],
+    options: []
   };
-  private avPlayer?: media.AVPlayer;
   private timer: number = 0;
   private questions = new Questions();
   scroller: Scroller = new Scroller();
   @State timeLeft: number = 10;
   @State timerId: number = -1;
-  @State message: string = ''
-  @State topic: string = ''
   private uiContext: UIContext = this.getUIContext();
-
   dialogControllerConfirm: CustomDialogController = new CustomDialogController({
     builder: AlertDialog({
       primaryTitle: 'Time is out',
@@ -59,7 +51,7 @@ export default struct QuizScreen {
         background: Color.Blue,
         action: () => {
           this.pages.pushPathByName('ContinentChooseScreen', 0)
-        },
+        }
       }
     }),
     width: '100%',
@@ -98,6 +90,7 @@ export default struct QuizScreen {
       familyName: 'NotoSansDevanagari',
       familySrc: $rawfile('NotoSansDevanagari_VariableFont.ttf')
     })
+
   }
 
   initTimer() {
@@ -119,29 +112,10 @@ export default struct QuizScreen {
   }
 
   timeUp(): void {
-    // If dev wants to use confirm button and taking chosen index as answer when time is up
-    /*
-    if(this.selectedIndex !== -1){
-      this.isShowCheckQuestionDialog = true;
-      this.progressValue =
-        PROGRESS_TOTAL / (this.questionList.length) * (this.currentQuestionIndex + 1)
-
-      if (this.currentQuestion.options[this.selectedIndex].isCorrect) {
-        this.answerState = true;
-        this.correctAnswer();
-      } else {
-        this.answerState = false;
-        this.wrongAnswer();
-      }
-      return
-    }*/
     this.clearTimerLast();
-    // this.message = 'You didn`t answer in time.';
     this.dialogControllerConfirm.open()
 
   }
-
-
 
   clearTimerLast(): void {
     if (this.timerId !== -1) {
@@ -150,99 +124,33 @@ export default struct QuizScreen {
     }
   }
 
-  setAVPlayerCallback(avPlayer: media.AVPlayer) {
-
-    avPlayer.on('error', (err: BusinessError) => {
-      avPlayer.reset();
-    });
-
-    avPlayer.on('stateChange', async (state: string, reason: media.StateChangeReason) => {
-      switch (state) {
-        case 'idle':
-          avPlayer.release();
-          break;
-        case 'initialized':
-          avPlayer.audioRendererInfo = {
-            usage: audio.StreamUsage.STREAM_USAGE_MUSIC,
-            rendererFlags: 0
-          };
-          avPlayer.prepare();
-          break;
-        case 'prepared':
-          avPlayer.play();
-          break;
-        case 'playing':
-          break;
-        case 'paused':
-          break;
-        case 'completed':
-          avPlayer.stop();
-          break;
-        case 'stopped':
-          avPlayer.reset();
-          break;
-        case 'released':
-          break;
-        default:
-          break;
-      }
-    });
-  }
-
   async correctAnswer() {
     this.clearTimerLast();
 
     this.correctCount++;
-    this.avPlayer = await media.createAVPlayer();
-    this.setAVPlayerCallback(this.avPlayer);
+
     const context = this.getUIContext().getHostContext() as Context;
-    const file = await context.resourceManager.getRawFd('correct_answer.mp3');
-    const avFileDesc: media.AVFileDescriptor = {
-      fd: file.fd, offset: file.offset, length: file.length
-    }
-    if (this.avPlayer) {
-      this.avPlayer.fdSrc = avFileDesc;
-      this.avPlayer.play();
-    }
+    playAudio('correct_answer.mp3', context)
   }
 
   async wrongAnswer() {
     this.clearTimerLast();
-
-    this.avPlayer = await media.createAVPlayer();
-    this.setAVPlayerCallback(this.avPlayer);
     const context = this.getUIContext().getHostContext() as Context
-    const file = await context.resourceManager.getRawFd('wrong_answer.mp3');
-    const avFileDesc: media.AVFileDescriptor = {
-      fd: file.fd, offset: file.offset, length: file.length
-    }
-    if (this.avPlayer) {
-      this.avPlayer.fdSrc = avFileDesc;
-      this.avPlayer.play();
-    }
+    playAudio('wrong_answer.mp3', context)
   }
 
   async quizComplete() {
     this.clearTimer();
     this.calcScore();
     this.pages.pop();
-    this.avPlayer = await media.createAVPlayer();
-    this.setAVPlayerCallback(this.avPlayer);
     const context = this.getUIContext().getHostContext() as Context
-    const file = await context.resourceManager.getRawFd('quiz_complete.mp3');
-    const avFileDesc: media.AVFileDescriptor = {
-      fd: file.fd, offset: file.offset, length: file.length
-    }
-    if (this.avPlayer) {
-      this.avPlayer.fdSrc = avFileDesc;
-      this.avPlayer.play();
-    }
+    playAudio('quiz_complete.mp3', context)
   }
 
   calcScore() {
     const score: Score = {
       score: this.correctCount * XP,
-      percent: Math.round(PROGRESS_TOTAL / this.questionList.length * this.correctCount),
+      percent: Math.round(PROGRESS_TOTAL / this.questionList.length * this.correctCount)
     }
     this.scoreInfo = score;
   }
@@ -262,13 +170,12 @@ export default struct QuizScreen {
       }
 
       if (this.answerState === false) {
-        Column() {
-          Text(`${this.currentQuestion.options.filter((answer) => answer.isCorrect)[0].value}`)
-            .fontColor('#58CC02')
-            .fontSize(18)
-            .textAlign(TextAlign.Center)
-            .fontWeight(FontWeight.Bold);
-        }
+        Text(`${this.currentQuestion.options.filter((answer) => answer.isCorrect)[0].value}`)
+          .fontColor('#58CC02')
+          .fontSize(18)
+          .textAlign(TextAlign.Center)
+          .fontWeight(FontWeight.Bold);
+
       }
       CustomButton({
         text: 'Continue',
@@ -364,7 +271,6 @@ export default struct QuizScreen {
     }
     .onReady(cxt => {
       this.chosenCont = cxt.pathInfo.param as string
-      // this.questions = new Questions()
       this.questionList = this.questions.callMethodByName(this.chosenCont)
       this.currentQuestion = this.questionList[this.currentQuestionIndex]
       this.initTimer()

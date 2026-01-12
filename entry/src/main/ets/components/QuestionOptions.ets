@@ -2,9 +2,10 @@ import { Option, Question } from '../model/Question';
 
 @Component
 export struct QuestionOptions {
-  @Prop currentQuestion: Question;
+  @Prop @Watch('currQuestion') currentQuestion: Question;
   @Link selectedIndex: number;
   onAction?: () => void;
+
 
   build() {
     Column({ space: 12 }){
@@ -26,8 +27,14 @@ export struct QuestionOptions {
           })
           .backgroundColor(this.selectedIndex === index ? '#63C9F9' : '#ECE4B7');
 
-      })
+      }, (item: string, index: number) => item)
     }
 
+  }
+
+  currQuestion(changedPropertyName: string) {
+    if (this.currentQuestion) {
+      console.info(`Question loaded`)
+    }
   }
 }

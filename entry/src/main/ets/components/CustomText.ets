@@ -10,7 +10,5 @@ export struct CustomText {
         .fontColor('#311E10')
         .margin({ bottom: 6 })
     }
-    // .width('100%')
-    // .height(60)
   }
 }

@@ -1,5 +1,5 @@
 import { CustomButton } from '../components/CustomButton';
-import { Score } from "../model/Score";
+import { Score } from '../model/Score';
 import { storeScore } from '../utils/ScoreStorage';
 import { emitter } from '@kit.BasicServicesKit';
 
@@ -58,11 +58,9 @@ export default struct ScoreScreen {
           isEnabled: true,
           type: true,
           onAction: () => {
-            // async () => {
-              storeScore(this.getUIContext().getHostContext() as Context, this.scoreInfo.score, this.scoreInfo.percent);
-              emitter.emit({ eventId: 1 });
-            // }
-              this.pages.pushPathByName('MainScreen', 0)
+            storeScore(this.getUIContext().getHostContext() as Context, this.scoreInfo.score, this.scoreInfo.percent);
+            emitter.emit({ eventId: 1 });
+            this.pages.pushPathByName('MainScreen', 0)
           }
         }).width('50%')
           .margin({ top: -7 })

@@ -2,7 +2,7 @@
 export struct CustomButton {
   @Prop text: string = '';
   @Prop isEnabled: boolean = true;
-  @Prop type: boolean = false;
+  @Prop @Watch('buttonTy') type: boolean = false;
   @State pressed: boolean = false;
   onAction?: () => void;
 
@@ -58,5 +58,9 @@ export struct CustomButton {
         this.pressed = false;
       }
     })
+  }
+
+  buttonTy(changedPropertyName: string) {
+    console.info(`Button type is ${changedPropertyName}`)
   }
 }

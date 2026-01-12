@@ -36,7 +36,7 @@ export default struct ContinentChooseScreen {
       ArcList({ initialIndex: 0, header: this.tabBar1 }) {
         ForEach(this.continents, (item: number, index: number) => {
           ArcListItem() {
-            Button('' + item, { type: ButtonType.Capsule })
+            Button(` ${item}` , { type: ButtonType.Capsule })
               .width(this.listSize)
               .height('100px')
               .fontSize('40px')
@@ -51,7 +51,7 @@ export default struct ContinentChooseScreen {
                 this.pages.pushPathByName('QuizScreen', this.chosenCont)
               })
           }.align(Alignment.Center)
-        }, (item: number, index: number) => (item + index).toString())
+        }, (item: number, index: number) => (item).toString())
 
         ArcListItem(){
           Button('Back' , { type: ButtonType.Capsule })
@@ -96,46 +96,4 @@ export default struct ContinentChooseScreen {
     .hideBackButton(true)
     .backgroundColor(Color.White)
   }
-
-  // @Builder
-  // listItemComponent(listItem: string, index: number) {
-  //   Row() {
-  //     Text(listItem.toString())
-  //       .margin({ left: 10 })
-  //       .fontColor(Color.Black)
-  //   }
-  //   .onClick(() => {
-  //     this.chosenCont = listItem.toString()
-  //     console.log('Chosen continents is: '+ this.chosenCont.toString())
-  //     this.pages.pushPathByName('QuizScreen', this.chosenCont)
-  //   })
-  //   .width('100%')
-  //   .padding(10)
-  //   .background('#ECE4B7')
-  //   .border({
-  //     width: 1,
-  //     color: '#EABE7C',
-  //     radius: 6,
-  //     style: BorderStyle.Solid
-  //   })
-  //   .justifyContent(FlexAlign.SpaceBetween)
-  // }
-
-  // @Builder
-  // listContinents() {
-  //   List({ space: 12, initialIndex: 0 }) {
-  //     ForEach(this.continents, (item: string, index?: number) => {
-  //       ListItem() {
-  //         if (index != undefined) {
-  //           this.listItemComponent(item, index)
-  //         }
-  //       }
-  //     }, (item: string) => item.toString())
-  //   }
-  //   .backgroundColor('#F9F8F6')
-  //   .margin(20)
-  //   .height('60%')
-  //   .scrollBar(BarState.Off)
-  //   .edgeEffect(EdgeEffect.Spring)
-  // }
 }

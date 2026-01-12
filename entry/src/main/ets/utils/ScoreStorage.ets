@@ -40,8 +40,8 @@ export async function getLast7Days(context: Context, desiredData: string): Promi
   let result: number[] = [];
 
   if (desiredData === 'score') {
+    let d = new Date(today);
     for (let i = 6; i >= 0; i--) {
-      let d = new Date(today);
       d.setDate(today.getDate() - i);
       const key = getDateKey(d);
 
@@ -50,9 +50,9 @@ export async function getLast7Days(context: Context, desiredData: string): Promi
       const avg = (count !== 0) ? (score as number) / (count as number) : 0
       result.push(avg as number);
     }
-  }else {
+  } else {
+    let d = new Date(today);
     for (let i = 6; i >= 0; i--) {
-      let d = new Date(today);
       d.setDate(today.getDate() - i);
       const key = getDateKey(d);
 
@@ -66,7 +66,7 @@ export async function getLast7Days(context: Context, desiredData: string): Promi
   return result;
 }
 
-export async function storeScore(context: Context, quizScore: number, quizPercent : number): Promise<void> {
+export async function storeScore(context: Context, quizScore: number, quizPercent: number): Promise<void> {
   const scorePreferences = await getScorePreferences(context);
   const countPreferences = await getCountPreferences(context);
   const percentPreferences = await getPercentPreferences(context);
@@ -87,7 +87,8 @@ export async function storeScore(context: Context, quizScore: number, quizPercen
   await percentPreferences.flush();
 }
 
-export async function resetToday(context: Context): Promise<void>{
+//Resetting today's data for testing
+export async function resetToday(context: Context): Promise<void> {
   const scorePreferences = await getScorePreferences(context);
   const countPreferences = await getCountPreferences(context);
   const percentPreferences = await getPercentPreferences(context);

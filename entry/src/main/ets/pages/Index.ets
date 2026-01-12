@@ -13,7 +13,7 @@ struct Index {
   @Provide('totalXp') totalXp: number = 0;
   @Provide('scoreInfo') scoreInfo: Score = {
     score: 0,
-    percent: 0,
+    percent: 0
   };
 
   @Builder

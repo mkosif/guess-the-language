@@ -42,7 +42,7 @@ export default struct HowToScreen {
       .alignItems(HorizontalAlign.Center)
       .justifyContent(FlexAlign.SpaceAround)
       .padding(15)
-      .width('%100')
+      .width('100%')
       .height('100%')
     }
     .backgroundColor('#F9F8F6')
