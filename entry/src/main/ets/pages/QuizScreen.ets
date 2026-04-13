@@ -1,6 +1,6 @@
 import { Question } from '../model/Question';
 import { Score } from '../model/Score';
-import { Questions } from '../viewmodel/Questions';
+import { loadContinentQuestions } from '../utils/QuestionLoader';
 import { QuestionOptions } from '../components/QuestionOptions';
 import { CustomButton } from '../components/CustomButton';
 import { AlertDialog } from '@kit.ArkUI';
@@ -17,39 +17,38 @@ export default struct QuizScreen {
   @State questionList: Question[] = [];
   @State currentQuestionIndex: number = 0;
   @State selectedIndex: number = -1;
-  @State progressValue: number = 10;
   @State isShowCheckQuestionDialog: boolean = false;
+  @State isAnswered: boolean = false;
   @State answerState: boolean = false;
-  @State totalTime: number = 0;
   @State correctCount: number = 0;
   @State currentQuestion: Question = {
     question: '',
     languageException: false,
     options: []
   };
-  private timer: number = 0;
-  private questions = new Questions();
   scroller: Scroller = new Scroller();
   @State timeLeft: number = 10;
-  @State timerId: number = -1;
+  private questionTimerId: number = -1;
   private uiContext: UIContext = this.getUIContext();
   dialogControllerConfirm: CustomDialogController = new CustomDialogController({
     builder: AlertDialog({
-      primaryTitle: 'Time is out',
-      content: 'Maybe you should be faster.',
+      primaryTitle: $r('app.string.dialog_timeout_title'),
+      content: $r('app.string.dialog_timeout_content'),
       primaryButton: {
-        value: 'Menu',
+        value: $r('app.string.btn_menu'),
         background: Color.Red,
         fontColor: Color.White,
         action: () => {
+          this.pages.clear();
           this.pages.pushPathByName('MainScreen', 0)
         }
       },
       secondaryButton: {
-        value: 'Try Again',
+        value: $r('app.string.btn_try_again'),
         fontColor: Color.White,
         background: Color.Blue,
         action: () => {
+          this.pages.clear();
           this.pages.pushPathByName('ContinentChooseScreen', 0)
         }
       }
@@ -61,17 +60,18 @@ export default struct QuizScreen {
     borderStyle: BorderStyle.Solid,
     borderColor: Color.Red,
     backgroundBlurStyle: BlurStyle.NONE,
-    backgroundColor: '#EABE7C',
+    backgroundColor: $r('app.color.color_gold'),
     onWillDismiss: (dismissDialogAction: DismissDialogAction) => {
       dismissDialogAction.dismiss();
+      this.pages.clear();
       this.pages.pushPathByName('MainScreen', 0)
     }
   })
 
   startTimer(): void {
-    this.clearTimer();
+    this.clearQuestionTimer();
     this.timeLeft = 10;
-    this.timerId = setInterval(() => {
+    this.questionTimerId = setInterval(() => {
       this.timeLeft--;
       if (this.timeLeft <= 0) {
         this.timeUp();
@@ -80,8 +80,7 @@ export default struct QuizScreen {
   }
 
   aboutToDisappear(): void {
-    this.clearTimer();
-    this.clearTimerLast();
+    this.clearQuestionTimer();
   }
 
   aboutToAppear(): void {
@@ -90,57 +89,46 @@ export default struct QuizScreen {
       familyName: 'NotoSansDevanagari',
       familySrc: $rawfile('NotoSansDevanagari_VariableFont.ttf')
     })
-
   }
 
-  initTimer() {
-    this.timer = setInterval(() => {
-      this.totalTime++;
-    }, 1000)
-  }
-
-  clearTimer() {
-    clearInterval(this.timer);
+  clearQuestionTimer(): void {
+    if (this.questionTimerId !== -1) {
+      clearInterval(this.questionTimerId);
+      this.questionTimerId = -1;
+    }
   }
 
   nextQuestion() {
     this.currentQuestionIndex++;
     this.selectedIndex = -1;
+    this.isAnswered = false;
     this.currentQuestion = this.questionList[this.currentQuestionIndex];
     this.scroller.scrollEdge(Edge.Top)
     this.startTimer()
   }
 
   timeUp(): void {
-    this.clearTimerLast();
+    this.clearQuestionTimer();
     this.dialogControllerConfirm.open()
-
-  }
-
-  clearTimerLast(): void {
-    if (this.timerId !== -1) {
-      clearInterval(this.timerId);
-      this.timerId = -1;
-    }
   }
 
   async correctAnswer() {
-    this.clearTimerLast();
-
+    this.clearQuestionTimer();
+    this.isAnswered = true;
     this.correctCount++;
-
     const context = this.getUIContext().getHostContext() as Context;
     playAudio('correct_answer.mp3', context)
   }
 
   async wrongAnswer() {
-    this.clearTimerLast();
+    this.clearQuestionTimer();
+    this.isAnswered = true;
     const context = this.getUIContext().getHostContext() as Context
     playAudio('wrong_answer.mp3', context)
   }
 
   async quizComplete() {
-    this.clearTimer();
+    this.clearQuestionTimer();
     this.calcScore();
     this.pages.pop();
     const context = this.getUIContext().getHostContext() as Context
@@ -163,22 +151,21 @@ export default struct QuizScreen {
           .width(18)
           .height(18);
 
-        Text(this.answerState === true ? 'Excellent!' : 'Incorrect!')
+        Text(this.answerState === true ? $r('app.string.answer_correct') : $r('app.string.answer_wrong'))
           .fontSize(18)
-          .fontColor(this.answerState === true ? '#58CC02' : '#FF4B4B')
+          .fontColor(this.answerState === true ? $r('app.color.color_correct') : $r('app.color.color_wrong'))
           .fontWeight(FontWeight.Bold);
       }
 
       if (this.answerState === false) {
         Text(`${this.currentQuestion.options.filter((answer) => answer.isCorrect)[0].value}`)
-          .fontColor('#58CC02')
+          .fontColor($r('app.color.color_correct'))
           .fontSize(18)
           .textAlign(TextAlign.Center)
           .fontWeight(FontWeight.Bold);
-
       }
       CustomButton({
-        text: 'Continue',
+        text: $r('app.string.btn_continue'),
         isEnabled: true,
         type: this.answerState,
         onAction: () => {
@@ -190,12 +177,11 @@ export default struct QuizScreen {
           }
           this.isShowCheckQuestionDialog = false;
           this.nextQuestion();
-
         }
       }).width('50%')
     }
     .width('100%')
-    .backgroundColor(this.answerState === true ? '#D6FFB8' : '#FFDFE0')
+    .backgroundColor(this.answerState === true ? $r('app.color.color_correct_bg') : $r('app.color.color_wrong_bg'))
     .height('100%')
     .justifyContent(FlexAlign.SpaceEvenly)
     .alignItems(HorizontalAlign.Center)
@@ -204,19 +190,25 @@ export default struct QuizScreen {
   build() {
     NavDestination() {
 
-      Row({ space: 6 }) {
+      Row({ space: 8 }) {
         Text(`${this.timeLeft}s`)
           .fontSize(28)
           .fontWeight(FontWeight.Bold)
-          .fontColor(this.timeLeft <= 3 ? '#FF4444' : '#FF6B35')
+          .fontColor(this.timeLeft <= 3 ? $r('app.color.color_timer_urgent') : $r('app.color.color_timer_normal'))
           .padding(3)
           .borderRadius(1)
+
+        Text(`${this.currentQuestionIndex + 1}/${this.questionList.length}`)
+          .fontSize(14)
+          .fontWeight(FontWeight.Bold)
+          .fontColor($r('app.color.color_primary'))
       }
       .alignItems(VerticalAlign.Center)
-      .width(60)
+      .width('100%')
+      .padding({ left: 8, right: 8 })
       .borderRadius(15)
-      .backgroundColor(this.timeLeft <= 3 ? '#ffebee' : '#fff3e0')
-      .justifyContent(FlexAlign.Center);
+      .backgroundColor(this.timeLeft <= 3 ? $r('app.color.color_timer_bg_urgent') : $r('app.color.color_timer_bg_normal'))
+      .justifyContent(FlexAlign.SpaceBetween);
 
       Scroll(this.scroller) {
         Column({ space: 6 }) {
@@ -229,15 +221,12 @@ export default struct QuizScreen {
             .fontWeight(FontWeight.Bold)
             .fontColor(Color.Black);
 
-
           QuestionOptions({
             currentQuestion: this.currentQuestion,
             selectedIndex: this.selectedIndex,
+            isAnswered: this.isAnswered,
             onAction: () => {
               this.isShowCheckQuestionDialog = true;
-              this.progressValue =
-                PROGRESS_TOTAL / (this.questionList.length) * (this.currentQuestionIndex + 1)
-
               if (this.currentQuestion.options[this.selectedIndex].isCorrect) {
                 this.answerState = true;
                 this.correctAnswer();
@@ -271,12 +260,18 @@ export default struct QuizScreen {
     }
     .onReady(cxt => {
       this.chosenCont = cxt.pathInfo.param as string
-      this.questionList = this.questions.callMethodByName(this.chosenCont)
+      const context = this.getUIContext().getHostContext() as Context;
+      this.questionList = loadContinentQuestions(context, this.chosenCont)
+      if (this.questionList.length === 0) {
+        this.pages.clear();
+        this.pages.pushPathByName('MainScreen', 0)
+        return;
+      }
       this.currentQuestion = this.questionList[this.currentQuestionIndex]
-      this.initTimer()
+      this.isAnswered = false;
       this.startTimer()
     })
-    .backgroundColor('#F9F8F6')
+    .backgroundColor($r('app.color.color_background'))
     .hideBackButton(true)
   }
 }
