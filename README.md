@@ -17,6 +17,7 @@ Also can trace of last 7 day's score and correction averages in stats screen
 # Use Cases
 
 - Select a continent and start the quiz for the languages written here
+- Load question data from `rawfile/questions.json`
 - Shuffle question list with Fisher-Yates algorithm
 - Answer language questions under a 10-second timer
 - Get instant audio feedback for right and wrong answers
@@ -45,7 +46,8 @@ entry/
 │ ├── components/
 │ │ ├── CustomButton.ets
 │ │ ├── CustomText.ets
-│ │ └── QuestionOptions.ets
+│ │ ├── NavButton.ets
+│ │ └── playAudio.ets
 │ │
 │ ├── entryability/
 │ │ └── EntryAbility.ets
@@ -64,13 +66,22 @@ entry/
 │ │ ├── HowToScreen.ets
 │ │ ├── StatsScreen.ets
 │ │ ├── QuizScreen.ets
-│ │ └── ScoreScreen.ets 
+│ │ └── ScoreScreen.ets
 │ │
-│ ├── utils/
-│ │ └── ScoreStorage.ets
-│ │
-│ └── viewmodel/
-│   └── Questions.ets
+│ └── utils/
+│   ├── QuestionLoader.ets
+│   ├── ScoreStorage.ets
+│   └── ShuffleList.ets
+│
+└── src/main/resources/
+  ├── base/element/
+  │ ├── color.json
+  │ └── string.json
+  │
+  └── rawfile/
+    ├── questions.json
+    ├── NotoSansDevanagari_VariableFont.ttf
+    └── *.mp3
 ```
 
 # Constraints and Restrictions
