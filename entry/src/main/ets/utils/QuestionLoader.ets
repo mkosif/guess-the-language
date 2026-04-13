@@ -1,5 +1,4 @@
 import { Question } from '../model/Question';
-import { util } from '@kit.ArkTS';
 import { shuffleList } from './ShuffleList';
 
 // Typed interface matching the shape of questions.json
@@ -17,8 +16,10 @@ interface QuestionsFile {
 export function loadContinentQuestions(context: Context, continent: string): Question[] {
   try {
     const raw: Uint8Array = context.resourceManager.getRawFileContentSync('questions.json');
-    const decoder = new util.TextDecoder('utf-8');
-    const text: string = decoder.decode(raw);
+    let text = '';
+    for (let i = 0; i < raw.length; i++) {
+      text += String.fromCharCode(raw[i]);
+    }
     const data = JSON.parse(text) as QuestionsFile;
 
     const continentMap: Record<string, Question[]> = {

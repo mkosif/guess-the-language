@@ -1,10 +1,9 @@
-import { Question } from '../model/Question';
+import { Option, Question } from '../model/Question';
 import { Score } from '../model/Score';
 import { loadContinentQuestions } from '../utils/QuestionLoader';
-import { QuestionOptions } from '../components/QuestionOptions';
 import { CustomButton } from '../components/CustomButton';
 import { AlertDialog } from '@kit.ArkUI';
-import { playAudio } from '../components/playAudio'
+import { playAudio, preloadAudioFiles } from '../components/playAudio'
 
 const PROGRESS_TOTAL = 100;
 const XP = 35;
@@ -89,6 +88,13 @@ export default struct QuizScreen {
       familyName: 'NotoSansDevanagari',
       familySrc: $rawfile('NotoSansDevanagari_VariableFont.ttf')
     })
+
+    const context = this.getUIContext().getHostContext() as Context;
+    preloadAudioFiles(context, [
+      'correct_answer.mp3',
+      'wrong_answer.mp3',
+      'quiz_complete.mp3'
+    ]);
   }
 
   clearQuestionTimer(): void {
@@ -189,66 +195,93 @@ export default struct QuizScreen {
 
   build() {
     NavDestination() {
+      Column() {
+        Column({ space: 14 }) {
+          Row({ space: 8 }) {
+            Text(`${this.timeLeft}s`)
+              .fontSize(17)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(this.timeLeft <= 3 ? $r('app.color.color_timer_urgent') : $r('app.color.color_timer_normal'))
 
-      Row({ space: 8 }) {
-        Text(`${this.timeLeft}s`)
-          .fontSize(28)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.timeLeft <= 3 ? $r('app.color.color_timer_urgent') : $r('app.color.color_timer_normal'))
-          .padding(3)
-          .borderRadius(1)
-
-        Text(`${this.currentQuestionIndex + 1}/${this.questionList.length}`)
-          .fontSize(14)
-          .fontWeight(FontWeight.Bold)
-          .fontColor($r('app.color.color_primary'))
-      }
-      .alignItems(VerticalAlign.Center)
-      .width('100%')
-      .padding({ left: 8, right: 8 })
-      .borderRadius(15)
-      .backgroundColor(this.timeLeft <= 3 ? $r('app.color.color_timer_bg_urgent') : $r('app.color.color_timer_bg_normal'))
-      .justifyContent(FlexAlign.SpaceBetween);
-
-      Scroll(this.scroller) {
-        Column({ space: 6 }) {
+            Text(`${this.currentQuestionIndex + 1}/${this.questionList.length}`)
+              .fontSize(12)
+              .fontWeight(FontWeight.Bold)
+              .fontColor($r('app.color.color_primary'))
+          }
+          .alignItems(VerticalAlign.Center)
+          .width('100%')
+          .padding({ left: 12, right: 12, top: 5, bottom: 5 })
+          .borderRadius(14)
+          .backgroundColor(this.timeLeft <= 3 ? $r('app.color.color_timer_bg_urgent') : $r('app.color.color_timer_bg_normal'))
+          .justifyContent(FlexAlign.SpaceBetween)
 
           Text(this.currentQuestion.question)
-            .width('90%')
-            .fontSize(18)
+            .width('86%')
+            .fontSize(14)
+            .maxLines(2)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
             .fontFamily(typeof this.currentQuestion.languageException === 'string' ?
               this.currentQuestion.languageException : undefined)
             .fontWeight(FontWeight.Bold)
+            .textAlign(TextAlign.Center)
             .fontColor(Color.Black);
 
-          QuestionOptions({
-            currentQuestion: this.currentQuestion,
-            selectedIndex: this.selectedIndex,
-            isAnswered: this.isAnswered,
-            onAction: () => {
-              this.isShowCheckQuestionDialog = true;
-              if (this.currentQuestion.options[this.selectedIndex].isCorrect) {
-                this.answerState = true;
-                this.correctAnswer();
-              } else {
-                this.answerState = false;
-                this.wrongAnswer();
+          Flex({ direction: FlexDirection.Row, wrap: FlexWrap.Wrap }) {
+            ForEach(this.currentQuestion.options, (option: Option, index: number) => {
+              Button() {
+                Text(option.value)
+                  .fontSize(12)
+                  .fontWeight(FontWeight.Medium)
+                  .maxLines(2)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+                  .width('100%')
+                  .textAlign(TextAlign.Center)
               }
-            }
-          })
+                .onClick(() => {
+                  if (this.isAnswered) {
+                    return;
+                  }
 
+                  this.selectedIndex = index
+                  this.isShowCheckQuestionDialog = true;
+                  if (this.currentQuestion.options[this.selectedIndex].isCorrect) {
+                    this.answerState = true;
+                    this.correctAnswer();
+                  } else {
+                    this.answerState = false;
+                    this.wrongAnswer();
+                  }
+                })
+                .fontColor(Color.Black)
+                .borderWidth(2)
+                .type(ButtonType.Normal)
+                .borderRadius(16)
+                .borderColor(this.selectedIndex === index ? $r('app.color.color_option_selected_border') : $r('app.color.color_option_border'))
+                .width('47%')
+                .height(50)
+                .margin({
+                  right: index % 2 === 0 ? 10 : 0,
+                  bottom: 10
+                })
+                .padding({ left: 6, right: 6, top: 4, bottom: 4 })
+                .clickEffect({
+                  level: ClickEffectLevel.HEAVY
+                })
+                .opacity(this.isAnswered && this.selectedIndex !== index ? 0.5 : 1.0)
+                .backgroundColor(this.selectedIndex === index ? $r('app.color.color_option_selected_bg') : $r('app.color.color_option_bg'));
+            }, (option: Option, index: number) => `${this.currentQuestion.question}-${index}-${option.value}`)
+          }
+          .width('100%')
         }
-        .padding({
-          bottom: 24
-        })
-        .width('100%');
+        .width('82%')
+        .height('78%')
+        .justifyContent(FlexAlign.SpaceEvenly)
+        .alignItems(HorizontalAlign.Center)
       }
-      .scrollBar(BarState.Off)
-      .padding({
-        bottom: 12,
-        top: 12
-      })
+      .width('100%')
       .height('100%')
+      .justifyContent(FlexAlign.Center)
+      .alignItems(HorizontalAlign.Center)
       .bindSheet(this.isShowCheckQuestionDialog, this.QuestionCheck(), {
         height: 110,
         mode: SheetMode.OVERLAY,
