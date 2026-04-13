@@ -1,7 +1,6 @@
 import { CustomButton } from '../components/CustomButton';
 import { Score } from '../model/Score';
 import { storeScore } from '../utils/ScoreStorage';
-import { emitter } from '@kit.BasicServicesKit';
 
 @Component
 export default struct ScoreScreen {
@@ -67,7 +66,6 @@ export default struct ScoreScreen {
           isEnabled: true,
           type: true,
           onAction: () => {
-            emitter.emit({ eventId: 1 });
             this.pages.clear();
             this.pages.pushPathByName('MainScreen', 0)
           }
@@ -84,7 +82,6 @@ export default struct ScoreScreen {
     .backgroundColor(Color.White)
     .hideBackButton(true)
     .onBackPressed(() => {
-      emitter.emit({ eventId: 1 });
       this.pages.clear();
       this.pages.pushPathByName('MainScreen', 0)
       return true

@@ -1,5 +1,4 @@
 import { getLast7Days } from '../utils/ScoreStorage';
-import { emitter } from '@kit.BasicServicesKit';
 import { NavButton } from '../components/NavButton';
 
 // Canvas API only accepts string colors, not $r() resource references
@@ -20,15 +19,22 @@ export default struct StatsScreen {
   private ctx: CanvasRenderingContext2D | null = null;
   private ctx2: CanvasRenderingContext2D | null = null;
 
-  private emitterCallback = async () => {
-    await this.loadData();
-    this.tryDrawCharts();
-  };
-
   private async loadData(): Promise<void> {
     this.scoreData = await getLast7Days(this.getUIContext().getHostContext() as Context, 'score');
     this.percentData = await getLast7Days(this.getUIContext().getHostContext() as Context, 'percent');
     this.dataLoaded = true;
+  }
+
+  private getAverage(data: number[]): number {
+    if (data.length === 0) {
+      return 0;
+    }
+
+    let total = 0;
+    data.forEach((value: number) => {
+      total += value;
+    });
+    return total / data.length;
   }
 
   private tryDrawCharts(): void {
@@ -114,11 +120,6 @@ export default struct StatsScreen {
   async aboutToAppear() {
     await this.loadData();
     this.tryDrawCharts();
-    emitter.on({ eventId: 1 }, this.emitterCallback);
-  }
-
-  aboutToDisappear(): void {
-    emitter.off(1);
   }
 
   build() {
@@ -127,7 +128,7 @@ export default struct StatsScreen {
         Swiper() {
           Column() {
             Column() {
-              Text(this.percentData[this.percentData.length - 1].toFixed(1))
+              Text(this.getAverage(this.percentData).toFixed(1))
                 .fontSize(20)
                 .fontColor($r('app.color.color_primary'))
               Text($r('app.string.stats_avg_percent'))
@@ -147,7 +148,7 @@ export default struct StatsScreen {
 
           Column() {
             Column() {
-              Text(this.scoreData[this.scoreData.length - 1].toFixed(1))
+              Text(this.getAverage(this.scoreData).toFixed(1))
                 .fontSize(20)
                 .fontColor($r('app.color.color_primary'))
               Text($r('app.string.stats_avg_score'))
