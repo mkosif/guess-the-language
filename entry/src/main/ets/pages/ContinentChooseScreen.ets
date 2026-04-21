@@ -15,7 +15,7 @@ function buildText() {
 @Component
 export default struct ContinentChooseScreen {
   @Consume('pages') pages: NavPathStack;
-  @State continents: Array<string> = ['All', 'Asia', 'Europe', 'Africa', 'America'];
+  private readonly continents: Array<string> = ['All', 'Asia', 'Europe', 'Africa', 'America'];
   @Provide('chosenCont') chosenCont: string = 'All';
   private watchSize: string = '466px';
   private listSize: string = '414px';

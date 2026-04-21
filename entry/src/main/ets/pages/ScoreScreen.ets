@@ -6,7 +6,7 @@ import { storeScore } from '../utils/ScoreStorage';
 export default struct ScoreScreen {
   @Consume('scoreInfo') scoreInfo: Score;
   @Consume('pages') pages: NavPathStack;
-  @State private hasStoredScore: boolean = false;
+  private hasStoredScore: boolean = false;
 
   aboutToAppear(): void {
     if (this.hasStoredScore) {
@@ -19,9 +19,7 @@ export default struct ScoreScreen {
 
   build() {
     NavDestination() {
-
       Column({ space: 8 }) {
-
         Image(this.scoreInfo.percent <= 25 ?
           $r('app.media.low_score_img') :
           this.scoreInfo.percent <= 75 ? $r('app.media.mid_score_img') : $r('app.media.high_score_img')
@@ -38,8 +36,6 @@ export default struct ScoreScreen {
             .fontWeight(FontWeight.Bold)
             .fontColor(Color.Green)
             .margin({ bottom: 6 })
-
-
           Text(`Percent: ${this.scoreInfo.percent}%`)
             .fontSize(14)
             .fontWeight(FontWeight.Bold)
@@ -71,13 +67,11 @@ export default struct ScoreScreen {
           }
         }).width('50%')
           .margin({ top: -7 })
-
       }
       .alignItems(HorizontalAlign.Center)
       .justifyContent(FlexAlign.Center)
       .width('100%')
       .height('100%')
-
     }
     .backgroundColor(Color.White)
     .hideBackButton(true)

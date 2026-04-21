@@ -12,7 +12,7 @@ export default struct StatsScreen {
   @Consume('pages') pages: NavPathStack;
   @State scoreData: number[] = [0, 0, 0, 0, 0, 0, 0];
   @State percentData: number[] = [0, 0, 0, 0, 0, 0, 0];
-  @State private dataLoaded: boolean = false;
+  private dataLoaded: boolean = false;
   private settings: RenderingContextSettings = new RenderingContextSettings(true)
   private context: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings)
   private context2: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings)
@@ -88,7 +88,6 @@ export default struct StatsScreen {
       takenContext.fillText(value.toString(), 15, y);
     }
 
-
     // Plot line
     takenContext.strokeStyle = CHART_AXIS_COLOR;
     takenContext.lineWidth = 2;
@@ -114,7 +113,6 @@ export default struct StatsScreen {
       takenContext.arc(x, y, 3, 0, Math.PI * 2);
       takenContext.fill();
     });
-
   }
 
   async aboutToAppear() {
@@ -170,8 +168,6 @@ export default struct StatsScreen {
           .color($r('app.color.color_accent'))
           .selectedColor($r('app.color.color_accent')))
         .loop(true)
-
-
         NavButton({
           text: $r('app.string.btn_back'),
           onAction: () => {

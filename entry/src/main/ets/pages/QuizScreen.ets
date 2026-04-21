@@ -12,14 +12,14 @@ const XP = 35;
 export default struct QuizScreen {
   @Consume('pages') pages: NavPathStack;
   @Consume('scoreInfo') scoreInfo: Score;
-  @State chosenCont: string = '';
+  private chosenCont: string = '';
   @State questionList: Question[] = [];
   @State currentQuestionIndex: number = 0;
   @State selectedIndex: number = -1;
   @State isShowCheckQuestionDialog: boolean = false;
   @State isAnswered: boolean = false;
   @State answerState: boolean = false;
-  @State correctCount: number = 0;
+  private correctCount: number = 0;
   @State currentQuestion: Question = {
     question: '',
     languageException: false,
@@ -269,7 +269,7 @@ export default struct QuizScreen {
                 })
                 .opacity(this.isAnswered && this.selectedIndex !== index ? 0.5 : 1.0)
                 .backgroundColor(this.selectedIndex === index ? $r('app.color.color_option_selected_bg') : $r('app.color.color_option_bg'));
-            }, (option: Option, index: number) => `${this.currentQuestion.question}-${index}-${option.value}`)
+            }, (option: Option) => `${this.currentQuestion.question}-${option.value}-${option.isCorrect}`)
           }
           .width('100%')
         }

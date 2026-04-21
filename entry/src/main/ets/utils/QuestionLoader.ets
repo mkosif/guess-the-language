@@ -10,14 +10,14 @@ interface QuestionsFile {
 }
 
 function decodeUtf8(bytes: Uint8Array): string {
-  let text = '';
+  const textParts: string[] = [];
   let index = 0;
 
   while (index < bytes.length) {
     const firstByte = bytes[index];
 
     if (firstByte < 0x80) {
-      text += String.fromCharCode(firstByte);
+      textParts.push(String.fromCharCode(firstByte));
       index++;
       continue;
     }
@@ -25,7 +25,7 @@ function decodeUtf8(bytes: Uint8Array): string {
     if ((firstByte & 0xE0) === 0xC0 && index + 1 < bytes.length) {
       const secondByte = bytes[index + 1];
       const codePoint = ((firstByte & 0x1F) << 6) | (secondByte & 0x3F);
-      text += String.fromCharCode(codePoint);
+      textParts.push(String.fromCharCode(codePoint));
       index += 2;
       continue;
     }
@@ -34,7 +34,7 @@ function decodeUtf8(bytes: Uint8Array): string {
       const secondByte = bytes[index + 1];
       const thirdByte = bytes[index + 2];
       const codePoint = ((firstByte & 0x0F) << 12) | ((secondByte & 0x3F) << 6) | (thirdByte & 0x3F);
-      text += String.fromCharCode(codePoint);
+      textParts.push(String.fromCharCode(codePoint));
       index += 3;
       continue;
     }
@@ -48,16 +48,16 @@ function decodeUtf8(bytes: Uint8Array): string {
       const adjustedCodePoint = codePoint - 0x10000;
       const highSurrogate = 0xD800 + (adjustedCodePoint >> 10);
       const lowSurrogate = 0xDC00 + (adjustedCodePoint & 0x3FF);
-      text += String.fromCharCode(highSurrogate, lowSurrogate);
+      textParts.push(String.fromCharCode(highSurrogate, lowSurrogate));
       index += 4;
       continue;
     }
 
-    text += '\uFFFD';
+    textParts.push('\uFFFD');
     index++;
   }
 
-  return text;
+  return textParts.join('');
 }
 
 /**

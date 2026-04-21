@@ -4,8 +4,6 @@ import { NavButton } from '../components/NavButton';
 @Component
 export default struct HowToScreen {
   @Consume('pages') pages: NavPathStack;
-
-
   build() {
     NavDestination() {
       Column() {
