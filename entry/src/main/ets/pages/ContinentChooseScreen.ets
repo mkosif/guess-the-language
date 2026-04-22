@@ -14,7 +14,7 @@ function buildText() {
 
 @Component
 export default struct ContinentChooseScreen {
-  @Consume('pages') pages: NavPathStack;
+  @Consume('pages') pages: NavPathStack = new NavPathStack();
   private readonly continents: Array<string> = ['All', 'Asia', 'Europe', 'Africa', 'America'];
   @Provide('chosenCont') chosenCont: string = 'All';
   private watchSize: string = '466px';
@@ -34,9 +34,9 @@ export default struct ContinentChooseScreen {
       .backgroundColor(Color.White)
 
       ArcList({ initialIndex: 0, header: this.tabBar1 }) {
-        ForEach(this.continents, (item: string, index: number) => {
+        ForEach(this.continents, (item: string) => {
           ArcListItem() {
-            Button(` ${item}` , { type: ButtonType.Capsule })
+            Button(` ${item}`, { type: ButtonType.Capsule })
               .width(this.listSize)
               .height('100px')
               .fontSize('40px')
@@ -53,8 +53,8 @@ export default struct ContinentChooseScreen {
           }.align(Alignment.Center)
         }, (item: string) => item)
 
-        ArcListItem(){
-          Button($r('app.string.btn_back') , { type: ButtonType.Capsule })
+        ArcListItem() {
+          Button($r('app.string.btn_back'), { type: ButtonType.Capsule })
             .width('212px')
             .height('100px')
             .fontSize('40px')

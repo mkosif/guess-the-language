@@ -47,19 +47,29 @@ function getDateKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
+function buildRecentDateKeys(today: Date): string[] {
+  const keys: string[] = [];
+  const cursor = new Date(today);
+  cursor.setDate(today.getDate() - 6);
+
+  for (let i = 0; i < 7; i++) {
+    keys.push(getDateKey(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return keys;
+}
+
 export async function getLast7Days(context: Context, desiredData: string): Promise<number[]> {
   const scorePreferences = await getScorePreferences(context);
   const countPreferences = await getCountPreferences(context);
   const percentPreferences = await getPercentPreferences(context);
   const today = new Date();
-  let result: number[] = [];
+  const result: number[] = [];
+  const dateKeys = buildRecentDateKeys(today);
 
   if (desiredData === 'score') {
-    for (let i = 6; i >= 0; i--) {
-      let d = new Date(today);
-      d.setDate(today.getDate() - i);
-      const key = getDateKey(d);
-
+    for (const key of dateKeys) {
       try {
         if (!scorePreferences || !countPreferences) {
           result.push(0);
@@ -75,11 +85,7 @@ export async function getLast7Days(context: Context, desiredData: string): Promi
       }
     }
   } else {
-    for (let i = 6; i >= 0; i--) {
-      let d = new Date(today);
-      d.setDate(today.getDate() - i);
-      const key = getDateKey(d);
-
+    for (const key of dateKeys) {
       try {
         if (!percentPreferences || !countPreferences) {
           result.push(0);
@@ -128,7 +134,7 @@ export async function storeScore(context: Context, quizScore: number, quizPercen
   }
 }
 
-//Resetting today's data for testing
+// Reset today's data for testing.
 export async function resetToday(context: Context): Promise<void> {
   try {
     const scorePreferences = await getScorePreferences(context);

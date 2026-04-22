@@ -3,15 +3,15 @@ import { Score } from '../model/Score';
 import { loadContinentQuestions } from '../utils/QuestionLoader';
 import { CustomButton } from '../components/CustomButton';
 import { AlertDialog } from '@kit.ArkUI';
-import { playAudio, preloadAudioFiles } from '../components/playAudio'
+import { playAudio, preloadAudioFiles } from '../components/playAudio';
 
 const PROGRESS_TOTAL = 100;
 const XP = 35;
 
 @Component
 export default struct QuizScreen {
-  @Consume('pages') pages: NavPathStack;
-  @Consume('scoreInfo') scoreInfo: Score;
+  @Consume('pages') pages: NavPathStack = new NavPathStack();
+  @Consume('scoreInfo') scoreInfo: Score = { score: 0, percent: 0 };
   private chosenCont: string = '';
   @State questionList: Question[] = [];
   @State currentQuestionIndex: number = 0;
@@ -65,7 +65,7 @@ export default struct QuizScreen {
       this.pages.clear();
       this.pages.pushPathByName('MainScreen', 0)
     }
-  })
+  });
 
   startTimer(): void {
     this.clearQuestionTimer();
@@ -83,11 +83,11 @@ export default struct QuizScreen {
   }
 
   aboutToAppear(): void {
-    //Register custom font. Every custom language must be registered. Poor performance, can be improved by optimizing
+    // Register the custom font used by question samples that need extra glyph coverage.
     this.uiContext.getFont().registerFont({
       familyName: 'NotoSansDevanagari',
       familySrc: $rawfile('NotoSansDevanagari_VariableFont.ttf')
-    })
+    });
 
     const context = this.getUIContext().getHostContext() as Context;
     preloadAudioFiles(context, [
@@ -109,13 +109,13 @@ export default struct QuizScreen {
     this.selectedIndex = -1;
     this.isAnswered = false;
     this.currentQuestion = this.questionList[this.currentQuestionIndex];
-    this.scroller.scrollEdge(Edge.Top)
-    this.startTimer()
+    this.scroller.scrollEdge(Edge.Top);
+    this.startTimer();
   }
 
   timeUp(): void {
     this.clearQuestionTimer();
-    this.dialogControllerConfirm.open()
+    this.dialogControllerConfirm.open();
   }
 
   async correctAnswer() {
@@ -123,30 +123,91 @@ export default struct QuizScreen {
     this.isAnswered = true;
     this.correctCount++;
     const context = this.getUIContext().getHostContext() as Context;
-    playAudio('correct_answer.mp3', context)
+    playAudio('correct_answer.mp3', context);
   }
 
   async wrongAnswer() {
     this.clearQuestionTimer();
     this.isAnswered = true;
-    const context = this.getUIContext().getHostContext() as Context
-    playAudio('wrong_answer.mp3', context)
+    const context = this.getUIContext().getHostContext() as Context;
+    playAudio('wrong_answer.mp3', context);
   }
 
   async quizComplete() {
     this.clearQuestionTimer();
     this.calcScore();
     this.pages.pop();
-    const context = this.getUIContext().getHostContext() as Context
-    playAudio('quiz_complete.mp3', context)
+    const context = this.getUIContext().getHostContext() as Context;
+    playAudio('quiz_complete.mp3', context);
   }
 
   calcScore() {
     const score: Score = {
       score: this.correctCount * XP,
       percent: Math.round(PROGRESS_TOTAL / this.questionList.length * this.correctCount)
-    }
+    };
     this.scoreInfo = score;
+  }
+
+  private getQuestionFontFamily(): ResourceStr {
+    if (typeof this.currentQuestion.languageException === 'string') {
+      return this.currentQuestion.languageException;
+    }
+    return 'HarmonyOS Sans';
+  }
+
+  private getOptionId(option: Option): string {
+    return `${this.currentQuestion.question}-${option.value}-${option.isCorrect}`;
+  }
+
+  private getOptionIndex(option: Option): number {
+    return this.currentQuestion.options.findIndex((currentOption: Option) =>
+      currentOption.value === option.value && currentOption.isCorrect === option.isCorrect);
+  }
+
+  @Builder
+  private OptionButton(option: Option) {
+    Button() {
+      Text(option.value)
+        .fontSize(12)
+        .fontWeight(FontWeight.Medium)
+        .maxLines(2)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .width('100%')
+        .textAlign(TextAlign.Center)
+    }
+      .onClick(() => {
+        if (this.isAnswered) {
+          return;
+        }
+
+        this.selectedIndex = this.getOptionIndex(option);
+        this.isShowCheckQuestionDialog = true;
+        if (this.currentQuestion.options[this.selectedIndex].isCorrect) {
+          this.answerState = true;
+          this.correctAnswer();
+        } else {
+          this.answerState = false;
+          this.wrongAnswer();
+        }
+      })
+      .fontColor(Color.Black)
+      .borderWidth(2)
+      .type(ButtonType.Normal)
+      .borderRadius(16)
+      .borderColor(this.selectedIndex === this.getOptionIndex(option) ? $r('app.color.color_option_selected_border') : $r('app.color.color_option_border'))
+      .width('47%')
+      .height(50)
+      .margin({
+        right: this.getOptionIndex(option) % 2 === 0 ? 10 : 0,
+        bottom: 10
+      })
+      .padding({ left: 6, right: 6, top: 4, bottom: 4 })
+      .clickEffect({
+        level: ClickEffectLevel.HEAVY
+      })
+      .opacity(this.isAnswered && this.selectedIndex !== this.getOptionIndex(option) ? 0.5 : 1.0)
+      .backgroundColor(this.selectedIndex === this.getOptionIndex(option) ? $r('app.color.color_option_selected_bg') : $r('app.color.color_option_bg'));
   }
 
   @Builder
@@ -220,56 +281,15 @@ export default struct QuizScreen {
             .fontSize(14)
             .maxLines(2)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .fontFamily(typeof this.currentQuestion.languageException === 'string' ?
-              this.currentQuestion.languageException : undefined)
+            .fontFamily(this.getQuestionFontFamily())
             .fontWeight(FontWeight.Bold)
             .textAlign(TextAlign.Center)
             .fontColor(Color.Black);
 
           Flex({ direction: FlexDirection.Row, wrap: FlexWrap.Wrap }) {
-            ForEach(this.currentQuestion.options, (option: Option, index: number) => {
-              Button() {
-                Text(option.value)
-                  .fontSize(12)
-                  .fontWeight(FontWeight.Medium)
-                  .maxLines(2)
-                  .textOverflow({ overflow: TextOverflow.Ellipsis })
-                  .width('100%')
-                  .textAlign(TextAlign.Center)
-              }
-                .onClick(() => {
-                  if (this.isAnswered) {
-                    return;
-                  }
-
-                  this.selectedIndex = index
-                  this.isShowCheckQuestionDialog = true;
-                  if (this.currentQuestion.options[this.selectedIndex].isCorrect) {
-                    this.answerState = true;
-                    this.correctAnswer();
-                  } else {
-                    this.answerState = false;
-                    this.wrongAnswer();
-                  }
-                })
-                .fontColor(Color.Black)
-                .borderWidth(2)
-                .type(ButtonType.Normal)
-                .borderRadius(16)
-                .borderColor(this.selectedIndex === index ? $r('app.color.color_option_selected_border') : $r('app.color.color_option_border'))
-                .width('47%')
-                .height(50)
-                .margin({
-                  right: index % 2 === 0 ? 10 : 0,
-                  bottom: 10
-                })
-                .padding({ left: 6, right: 6, top: 4, bottom: 4 })
-                .clickEffect({
-                  level: ClickEffectLevel.HEAVY
-                })
-                .opacity(this.isAnswered && this.selectedIndex !== index ? 0.5 : 1.0)
-                .backgroundColor(this.selectedIndex === index ? $r('app.color.color_option_selected_bg') : $r('app.color.color_option_bg'));
-            }, (option: Option) => `${this.currentQuestion.question}-${option.value}-${option.isCorrect}`)
+            ForEach(this.currentQuestion.options, (option: Option) => {
+              this.OptionButton(option)
+            }, (option: Option) => this.getOptionId(option))
           }
           .width('100%')
         }
@@ -292,17 +312,17 @@ export default struct QuizScreen {
       })
     }
     .onReady(cxt => {
-      this.chosenCont = cxt.pathInfo.param as string
+      this.chosenCont = cxt.pathInfo.param as string;
       const context = this.getUIContext().getHostContext() as Context;
-      this.questionList = loadContinentQuestions(context, this.chosenCont)
+      this.questionList = loadContinentQuestions(context, this.chosenCont);
       if (this.questionList.length === 0) {
         this.pages.clear();
-        this.pages.pushPathByName('MainScreen', 0)
+        this.pages.pushPathByName('MainScreen', 0);
         return;
       }
-      this.currentQuestion = this.questionList[this.currentQuestionIndex]
+      this.currentQuestion = this.questionList[this.currentQuestionIndex];
       this.isAnswered = false;
-      this.startTimer()
+      this.startTimer();
     })
     .backgroundColor($r('app.color.color_background'))
     .hideBackButton(true)

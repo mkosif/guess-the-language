@@ -4,6 +4,151 @@ import { BusinessError } from '@kit.BasicServicesKit';
 
 const audioFileCache: Map<string, media.AVFileDescriptor> = new Map();
 
+class AudioPlaybackSession {
+  private released: boolean = false;
+  private readonly player: media.AVPlayer;
+  private readonly filePath: string;
+  private readonly audioManager: audio.AudioManager;
+  private readonly sessionManager: audio.AudioSessionManager;
+  private readonly volumeManager: audio.AudioVolumeManager;
+  private readonly errorHandler: (err: BusinessError) => void = (err: BusinessError): void => {
+    this.handleError(err);
+  };
+  private readonly stateChangeHandler: (state: media.AVPlayerState) => void = (state: media.AVPlayerState): void => {
+    this.handleStateChange(state);
+  };
+  private readonly audioInterruptHandler: (event: audio.InterruptEvent) => void = (event: audio.InterruptEvent): void => {
+    this.handleAudioInterrupt(event);
+  };
+  private readonly deviceChangeHandler: (event: audio.CurrentOutputDeviceChangedEvent) => void =
+    (_event: audio.CurrentOutputDeviceChangedEvent): void => {
+      this.handleDeviceChange();
+    };
+  private readonly volumeChangeHandler: (event: audio.StreamVolumeEvent) => void = (event: audio.StreamVolumeEvent): void => {
+    this.handleVolumeChange(event);
+  };
+
+  constructor(player: media.AVPlayer, filePath: string, audioManager: audio.AudioManager,
+    sessionManager: audio.AudioSessionManager, volumeManager: audio.AudioVolumeManager) {
+    this.player = player;
+    this.filePath = filePath;
+    this.audioManager = audioManager;
+    this.sessionManager = sessionManager;
+    this.volumeManager = volumeManager;
+  }
+
+  async prepareAndPlay(source: media.AVFileDescriptor): Promise<void> {
+    this.attachListeners();
+    this.player.audioRendererInfo = {
+      usage: audio.StreamUsage.STREAM_USAGE_MUSIC,
+      rendererFlags: 0
+    };
+    this.player.fdSrc = source;
+    try {
+      await this.player.prepare();
+      await this.player.play();
+    } catch (error) {
+      console.error(`AVPlayer prepare or play failed for ${this.filePath}: ${error}`);
+      await this.release();
+    }
+  }
+
+  async release(): Promise<void> {
+    if (this.released) {
+      return;
+    }
+
+    this.released = true;
+    this.detachListeners();
+    try {
+      await this.player.release();
+    } catch (error) {
+      console.error(`AVPlayer release failed: ${error}`);
+    }
+  }
+
+  async stopPlayback(): Promise<void> {
+    if (this.released) {
+      return;
+    }
+
+    if (this.player.state === 'playing') {
+      try {
+        await this.player.pause();
+      } catch (error) {
+        console.error(`AVPlayer pause failed: ${error}`);
+      }
+    }
+
+    await this.release();
+  }
+
+  handleError(err: BusinessError): void {
+    console.error(`AVPlayer error for ${this.filePath}: ${err}`);
+    void this.release();
+  }
+
+  handleStateChange(state: media.AVPlayerState): void {
+    if (state === 'completed' || state === 'stopped' || state === 'released') {
+      void this.release();
+    }
+  }
+
+  handleAudioInterrupt(event: audio.InterruptEvent): void {
+    if (event.eventType !== audio.InterruptType.INTERRUPT_TYPE_BEGIN) {
+      return;
+    }
+
+    if (event.hintType === audio.InterruptHint.INTERRUPT_HINT_PAUSE ||
+      event.hintType === audio.InterruptHint.INTERRUPT_HINT_STOP ||
+      event.hintType === audio.InterruptHint.INTERRUPT_HINT_MUTE) {
+      void this.stopPlayback();
+    }
+  }
+
+  handleDeviceChange(): void {
+    void this.stopPlayback();
+  }
+
+  handleVolumeChange(event: audio.StreamVolumeEvent): void {
+    if (event.volume <= 0) {
+      void this.stopPlayback();
+    }
+  }
+
+  private attachListeners(): void {
+    this.player.on('error', this.errorHandler);
+    this.player.on('stateChange', this.stateChangeHandler);
+    this.player.on('audioInterrupt', this.audioInterruptHandler);
+    try {
+      this.sessionManager.on('currentOutputDeviceChanged', this.deviceChangeHandler);
+    } catch (error) {
+      console.error(`Failed to register output device change listener: ${error}`);
+    }
+    try {
+      this.volumeManager.on('streamVolumeChange', audio.StreamUsage.STREAM_USAGE_MUSIC, this.volumeChangeHandler);
+    } catch (error) {
+      console.error(`Failed to register stream volume listener: ${error}`);
+    }
+  }
+
+  private detachListeners(): void {
+    this.player.off('error', this.errorHandler);
+    this.player.off('stateChange', this.stateChangeHandler);
+    this.player.off('audioInterrupt', this.audioInterruptHandler);
+    try {
+      this.sessionManager.off('currentOutputDeviceChanged', this.deviceChangeHandler);
+    } catch (error) {
+      console.error(`Failed to remove output device change listener: ${error}`);
+    }
+    try {
+      this.volumeManager.off('streamVolumeChange', this.volumeChangeHandler);
+    } catch (error) {
+      console.error(`Failed to remove stream volume listener: ${error}`);
+    }
+  }
+}
+
 async function getAudioDescriptor(filePath: string, context: Context): Promise<media.AVFileDescriptor> {
   const cached = audioFileCache.get(filePath);
   if (cached) {
@@ -26,51 +171,29 @@ async function getAudioDescriptor(filePath: string, context: Context): Promise<m
 }
 
 export async function preloadAudioFiles(context: Context, filePaths: string[]): Promise<void> {
-  await Promise.all(filePaths.map(async (filePath: string) => {
+  for (const filePath of filePaths) {
     try {
       await getAudioDescriptor(filePath, context);
     } catch (error) {
       console.error(`preloadAudioFiles failed for ${filePath}: ${error}`);
     }
-  }));
+  }
 }
 
-export async function playAudio(filePath: string, context: Context) {
+export async function playAudio(filePath: string, context: Context): Promise<void> {
+  let session: AudioPlaybackSession | null = null;
   try {
     const player: media.AVPlayer = await media.createAVPlayer();
-    let released = false;
-
-    const releasePlayer = async () => {
-      if (released) {
-        return;
-      }
-      released = true;
-      try {
-        await player.release();
-      } catch (error) {
-        console.error(`AVPlayer release failed: ${error}`);
-      }
-    };
-
-    player.on('error', async (err: BusinessError) => {
-      console.error(`AVPlayer error for ${filePath}: ${err}`);
-      await releasePlayer();
-    });
-
-    player.on('stateChange', async (state: string) => {
-      if (state === 'completed' || state === 'stopped') {
-        await releasePlayer();
-      }
-    });
-
-    player.audioRendererInfo = {
-      usage: audio.StreamUsage.STREAM_USAGE_MUSIC,
-      rendererFlags: 0
-    };
-    player.fdSrc = await getAudioDescriptor(filePath, context);
-    await player.prepare();
-    player.play();
+    const audioManager = audio.getAudioManager();
+    const sessionManager = audioManager.getSessionManager();
+    const volumeManager = audioManager.getVolumeManager();
+    session = new AudioPlaybackSession(player, filePath, audioManager, sessionManager, volumeManager);
+    const descriptor = await getAudioDescriptor(filePath, context);
+    await session.prepareAndPlay(descriptor);
   } catch (error) {
+    if (session) {
+      await session.release();
+    }
     console.error(`playAudio failed for ${filePath}: ${error}`);
   }
 }

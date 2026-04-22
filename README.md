@@ -38,7 +38,7 @@
 - Build and test flow is designed for DevEco Studio and Hvigor.
 - Navigation uses `Navigation` and `NavPathStack`; Router APIs are not used.
 
-# Project Structure
+# Directory Structure
 
 ```text
 AppScope/
@@ -51,6 +51,10 @@ AppScope/
             ├── background.png
             ├── foreground.png
             └── layered_image.json
+
+build-profile.json5
+hvigorfile.ts
+oh-package.json5
 
 entry/
 ├── build-profile.json5
