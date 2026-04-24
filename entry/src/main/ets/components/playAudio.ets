@@ -20,9 +20,13 @@ class AudioPlaybackSession {
   readonly audioInterruptHandler: (event: audio.InterruptEvent) => void = (event: audio.InterruptEvent): void => {
     this.handleAudioInterrupt(event);
   };
-  readonly deviceChangeHandler: (event: audio.CurrentOutputDeviceChangedEvent) => void =
-    (event: audio.CurrentOutputDeviceChangedEvent): void => {
-      this.handleDeviceChange(event);
+  readonly sessionDeviceChangeHandler: (event: audio.CurrentOutputDeviceChangedEvent) => void =
+    (_event: audio.CurrentOutputDeviceChangedEvent): void => {
+      this.handleDeviceChange();
+    };
+  readonly rendererDeviceChangeHandler: (event: audio.AudioStreamDeviceChangeInfo) => void =
+    (_event: audio.AudioStreamDeviceChangeInfo): void => {
+      this.handleDeviceChange();
     };
   readonly volumeChangeHandler: (event: audio.StreamVolumeEvent) => void = (event: audio.StreamVolumeEvent): void => {
     this.handleVolumeChange(event);
@@ -105,7 +109,7 @@ class AudioPlaybackSession {
     }
   }
 
-  private handleDeviceChange(_event: audio.CurrentOutputDeviceChangedEvent): void {
+  private handleDeviceChange(): void {
     void this.stopPlayback();
   }
 
@@ -120,9 +124,14 @@ class AudioPlaybackSession {
     this.player.off('stateChange', this.stateChangeHandler);
     this.player.off('audioInterrupt', this.audioInterruptHandler);
     try {
-      this.sessionManager.off('currentOutputDeviceChanged', this.deviceChangeHandler);
+      this.sessionManager.off('currentOutputDeviceChanged', this.sessionDeviceChangeHandler);
     } catch (error) {
       console.error(`Failed to remove output device change listener: ${error}`);
+    }
+    try {
+      this.player.off('audioOutputDeviceChangeWithInfo', this.rendererDeviceChangeHandler);
+    } catch (error) {
+      console.error(`Failed to remove renderer output device change listener: ${error}`);
     }
     try {
       this.volumeManager.off('streamVolumeChange', this.volumeChangeHandler);
@@ -176,9 +185,14 @@ export async function playAudio(filePath: string, context: Context): Promise<voi
     player.on('stateChange', session.stateChangeHandler);
     player.on('audioInterrupt', session.audioInterruptHandler);
     try {
-      sessionManager.on('currentOutputDeviceChanged', session.deviceChangeHandler);
+      sessionManager.on('currentOutputDeviceChanged', session.sessionDeviceChangeHandler);
     } catch (error) {
       console.error(`Failed to register output device change listener: ${error}`);
+    }
+    try {
+      player.on('audioOutputDeviceChangeWithInfo', session.rendererDeviceChangeHandler);
+    } catch (error) {
+      console.error(`Failed to register renderer output device change listener: ${error}`);
     }
     try {
       volumeManager.on('streamVolumeChange', audio.StreamUsage.STREAM_USAGE_MUSIC, session.volumeChangeHandler);
