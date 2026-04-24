@@ -11,20 +11,20 @@ class AudioPlaybackSession {
   private readonly audioManager: audio.AudioManager;
   private readonly sessionManager: audio.AudioSessionManager;
   private readonly volumeManager: audio.AudioVolumeManager;
-  private readonly errorHandler: (err: BusinessError) => void = (err: BusinessError): void => {
+  readonly errorHandler: (err: BusinessError) => void = (err: BusinessError): void => {
     this.handleError(err);
   };
-  private readonly stateChangeHandler: (state: media.AVPlayerState) => void = (state: media.AVPlayerState): void => {
+  readonly stateChangeHandler: (state: media.AVPlayerState) => void = (state: media.AVPlayerState): void => {
     this.handleStateChange(state);
   };
-  private readonly audioInterruptHandler: (event: audio.InterruptEvent) => void = (event: audio.InterruptEvent): void => {
+  readonly audioInterruptHandler: (event: audio.InterruptEvent) => void = (event: audio.InterruptEvent): void => {
     this.handleAudioInterrupt(event);
   };
-  private readonly deviceChangeHandler: (event: audio.CurrentOutputDeviceChangedEvent) => void =
-    (_event: audio.CurrentOutputDeviceChangedEvent): void => {
-      this.handleDeviceChange();
+  readonly deviceChangeHandler: (event: audio.CurrentOutputDeviceChangedEvent) => void =
+    (event: audio.CurrentOutputDeviceChangedEvent): void => {
+      this.handleDeviceChange(event);
     };
-  private readonly volumeChangeHandler: (event: audio.StreamVolumeEvent) => void = (event: audio.StreamVolumeEvent): void => {
+  readonly volumeChangeHandler: (event: audio.StreamVolumeEvent) => void = (event: audio.StreamVolumeEvent): void => {
     this.handleVolumeChange(event);
   };
 
@@ -38,7 +38,6 @@ class AudioPlaybackSession {
   }
 
   async prepareAndPlay(source: media.AVFileDescriptor): Promise<void> {
-    this.attachListeners();
     this.player.audioRendererInfo = {
       usage: audio.StreamUsage.STREAM_USAGE_MUSIC,
       rendererFlags: 0
@@ -83,18 +82,18 @@ class AudioPlaybackSession {
     await this.release();
   }
 
-  handleError(err: BusinessError): void {
+  private handleError(err: BusinessError): void {
     console.error(`AVPlayer error for ${this.filePath}: ${err}`);
     void this.release();
   }
 
-  handleStateChange(state: media.AVPlayerState): void {
+  private handleStateChange(state: media.AVPlayerState): void {
     if (state === 'completed' || state === 'stopped' || state === 'released') {
       void this.release();
     }
   }
 
-  handleAudioInterrupt(event: audio.InterruptEvent): void {
+  private handleAudioInterrupt(event: audio.InterruptEvent): void {
     if (event.eventType !== audio.InterruptType.INTERRUPT_TYPE_BEGIN) {
       return;
     }
@@ -106,29 +105,13 @@ class AudioPlaybackSession {
     }
   }
 
-  handleDeviceChange(): void {
+  private handleDeviceChange(_event: audio.CurrentOutputDeviceChangedEvent): void {
     void this.stopPlayback();
   }
 
-  handleVolumeChange(event: audio.StreamVolumeEvent): void {
+  private handleVolumeChange(event: audio.StreamVolumeEvent): void {
     if (event.volume <= 0) {
       void this.stopPlayback();
-    }
-  }
-
-  private attachListeners(): void {
-    this.player.on('error', this.errorHandler);
-    this.player.on('stateChange', this.stateChangeHandler);
-    this.player.on('audioInterrupt', this.audioInterruptHandler);
-    try {
-      this.sessionManager.on('currentOutputDeviceChanged', this.deviceChangeHandler);
-    } catch (error) {
-      console.error(`Failed to register output device change listener: ${error}`);
-    }
-    try {
-      this.volumeManager.on('streamVolumeChange', audio.StreamUsage.STREAM_USAGE_MUSIC, this.volumeChangeHandler);
-    } catch (error) {
-      console.error(`Failed to register stream volume listener: ${error}`);
     }
   }
 
@@ -149,8 +132,9 @@ class AudioPlaybackSession {
   }
 }
 
-async function getAudioDescriptor(filePath: string, context: Context): Promise<media.AVFileDescriptor> {
-  const cached = audioFileCache.get(filePath);
+async function getAudioDescriptor(filePath: string, context: Context,
+  fileCache: Map<string, media.AVFileDescriptor>): Promise<media.AVFileDescriptor> {
+  const cached = fileCache.get(filePath);
   if (cached) {
     return cached;
   }
@@ -162,7 +146,7 @@ async function getAudioDescriptor(filePath: string, context: Context): Promise<m
       offset: file.offset,
       length: file.length
     };
-    audioFileCache.set(filePath, descriptor);
+    fileCache.set(filePath, descriptor);
     return descriptor;
   } catch (error) {
     console.error(`getAudioDescriptor failed for ${filePath}: ${error}`);
@@ -173,7 +157,7 @@ async function getAudioDescriptor(filePath: string, context: Context): Promise<m
 export async function preloadAudioFiles(context: Context, filePaths: string[]): Promise<void> {
   for (const filePath of filePaths) {
     try {
-      await getAudioDescriptor(filePath, context);
+      await getAudioDescriptor(filePath, context, audioFileCache);
     } catch (error) {
       console.error(`preloadAudioFiles failed for ${filePath}: ${error}`);
     }
@@ -188,7 +172,20 @@ export async function playAudio(filePath: string, context: Context): Promise<voi
     const sessionManager = audioManager.getSessionManager();
     const volumeManager = audioManager.getVolumeManager();
     session = new AudioPlaybackSession(player, filePath, audioManager, sessionManager, volumeManager);
-    const descriptor = await getAudioDescriptor(filePath, context);
+    player.on('error', session.errorHandler);
+    player.on('stateChange', session.stateChangeHandler);
+    player.on('audioInterrupt', session.audioInterruptHandler);
+    try {
+      sessionManager.on('currentOutputDeviceChanged', session.deviceChangeHandler);
+    } catch (error) {
+      console.error(`Failed to register output device change listener: ${error}`);
+    }
+    try {
+      volumeManager.on('streamVolumeChange', audio.StreamUsage.STREAM_USAGE_MUSIC, session.volumeChangeHandler);
+    } catch (error) {
+      console.error(`Failed to register stream volume listener: ${error}`);
+    }
+    const descriptor = await getAudioDescriptor(filePath, context, audioFileCache);
     await session.prepareAndPlay(descriptor);
   } catch (error) {
     if (session) {
