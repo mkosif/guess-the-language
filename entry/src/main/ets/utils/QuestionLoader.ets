@@ -3,10 +3,10 @@ import { shuffleList } from './ShuffleList';
 
 // Typed interface matching the shape of questions.json
 interface QuestionsFile {
-  Asia: Question[];
-  Europe: Question[];
-  Africa: Question[];
-  America: Question[];
+  asia: Question[];
+  europe: Question[];
+  africa: Question[];
+  america: Question[];
 }
 
 function decodeUtf8(bytes: Uint8Array): string {
@@ -68,25 +68,42 @@ export function loadContinentQuestions(context: Context, continent: string): Que
   try {
     const raw: Uint8Array = context.resourceManager.getRawFileContentSync('questions.json');
     const text = decodeUtf8(raw);
-    const data = JSON.parse(text) as QuestionsFile;
-
-    const continentMap: Record<string, Question[]> = {
-      'Asia': data.Asia ?? [],
-      'Europe': data.Europe ?? [],
-      'Africa': data.Africa ?? [],
-      'America': data.America ?? []
+    const parsedData = JSON.parse(text) as Record<string, Question[]>;
+    const data: QuestionsFile = {
+      asia: parsedData['Asia'] ?? [],
+      europe: parsedData['Europe'] ?? [],
+      africa: parsedData['Africa'] ?? [],
+      america: parsedData['America'] ?? []
     };
+
+    const continentMap: QuestionsFile = data;
 
     let list: Question[];
     if (continent === 'All') {
       list = [
-        ...(continentMap['Asia']),
-        ...(continentMap['Europe']),
-        ...(continentMap['Africa']),
-        ...(continentMap['America'])
+        ...(continentMap.asia),
+        ...(continentMap.europe),
+        ...(continentMap.africa),
+        ...(continentMap.america)
       ];
     } else {
-      list = continentMap[continent] ?? [];
+      switch (continent) {
+        case 'Asia':
+          list = continentMap.asia;
+          break;
+        case 'Europe':
+          list = continentMap.europe;
+          break;
+        case 'Africa':
+          list = continentMap.africa;
+          break;
+        case 'America':
+          list = continentMap.america;
+          break;
+        default:
+          list = [];
+          break;
+      }
     }
 
     shuffleList(list);
