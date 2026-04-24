@@ -70,10 +70,10 @@ export function loadContinentQuestions(context: Context, continent: string): Que
     const text = decodeUtf8(raw);
     const parsedData = JSON.parse(text) as Record<string, Question[]>;
     const data: QuestionsFile = {
-      asia: parsedData['Asia'] ?? [],
-      europe: parsedData['Europe'] ?? [],
-      africa: parsedData['Africa'] ?? [],
-      america: parsedData['America'] ?? []
+      asia: parsedData.Asia ?? [],
+      europe: parsedData.Europe ?? [],
+      africa: parsedData.Africa ?? [],
+      america: parsedData.America ?? []
     };
 
     const continentMap: QuestionsFile = data;
